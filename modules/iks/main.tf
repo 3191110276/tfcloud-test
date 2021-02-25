@@ -158,4 +158,8 @@ resource "intersight_kubernetes_virtual_machine_infrastructure_provider" "k8s_in
     object_type = "organization.Organization"
     moid        = data.intersight_organization_organization.organization.moid
   }
+
+  provisioner "local-exec" {
+    command = "ls"
+  }
 }
