@@ -163,3 +163,147 @@ resource "intersight_kubernetes_virtual_machine_infrastructure_provider" "k8s_in
     command = "ls"
   }
 }
+
+#############################
+# CREATE MASTER NODE GROUP FOR CLUSTER
+#############################
+resource "intersight_kubernetes_node_group_profile" "k8s_mastergroup" {
+
+  name = "${var.app_name}_${var.cluster_name}_k8s_mastergroup"
+
+  node_type = "Master"
+
+  desiredsize = var.master_count
+
+  kubernetes_version {
+    moid = intersight_kubernetes_version_policy.k8s_version.moid
+    object_type = "kubernetes.VersionPolicy"
+  }
+
+  infra_provider {
+    moid = intersight_kubernetes_virtual_machine_infrastructure_provider.k8s_infraprovider.moid
+    object_type = "kubernetes.VirtualMachineInfrastructureProvider"
+  }
+
+  ip_pools {
+    moid = var.ip_pool
+    object_type = "ippool.Pool"
+  }
+
+  cluster_profile {
+    object_type = "kubernetes.ClusterProfile"
+    moid = intersight_kubernetes_cluster_profile.k8s_cluster.id
+  }
+}
+
+#############################
+# CREATE WORKER NODE GROUP FOR CLUSTER A
+#############################
+resource "intersight_kubernetes_node_group_profile" "k8s_workergroup" {
+
+  name = "${var.app_name}_${var.cluster_name}_k8s_workergroup"
+
+  node_type = "Worker"
+
+  desiredsize = var.worker_count
+
+  kubernetes_version {
+    moid = intersight_kubernetes_version_policy.k8s_version.moid
+    object_type = "kubernetes.VersionPolicy"
+  }
+
+  infra_provider {
+    moid = intersight_kubernetes_virtual_machine_infrastructure_provider.k8s_infraprovider.moid
+    object_type = "kubernetes.VirtualMachineInfrastructureProvider"
+  }
+
+  ip_pools {
+    moid = var.ip_pool
+    object_type = "ippool.Pool"
+  }
+
+  cluster_profile {
+    object_type = "kubernetes.ClusterProfile"
+    moid = intersight_kubernetes_cluster_profile.k8s_cluster.moid
+  }
+}
+
+############################################################
+# CREATE K8S PROFILE
+############################################################
+resource "intersight_kubernetes_cluster_profile" "k8s_cluster" {
+
+  name = "${var.app_name}_${var.cluster_name}_k8s_cluster"
+
+  action = "Deploy"
+
+  cluster_ip_pools {
+    moid = var.ip_pool
+    object_type = "ippool.Pool"
+  }
+
+  management_config {
+    load_balancer_count = var.loadbalancer_count
+    ssh_user = var.ssh_user
+    ssh_keys = var.ssh_keys
+  }
+
+  sys_config {
+    moid = intersight_kubernetes_sys_config_policy.k8s_sysconfig.moid
+    object_type = "kubernetes.SysConfigPolicy"
+  }
+
+  net_config {
+    moid = intersight_kubernetes_network_policy.k8s_network.moid
+    object_type = "kubernetes.NetworkPolicy"
+  }
+
+  container_runtime_config {
+    moid = intersight_kubernetes_container_runtime_policy.k8s_runtime.moid
+    object_type = "kubernetes.ContainerRuntimePolicy"
+  }
+
+  organization {
+    object_type = "organization.Organization"
+    moid        = data.intersight_organization_organization.organization.moid
+  }
+}
+
+############################################################
+# WAIT FOR KUBECONFIG TO BE CREATED
+############################################################
+resource "time_sleep" "sleep_after_cluster_creation" {
+  depends_on = [intersight_kubernetes_cluster_profile.k8s_cluster]
+
+  create_duration = "30s"
+}
+
+############################################################
+# GET CLUSTER INFORMATION
+############################################################
+data "intersight_kubernetes_cluster_profile" "output" {
+  depends_on = [time_sleep.sleep_after_cluster_creation]
+  name = "${var.app_name}_${var.cluster_name}_k8s_cluster"
+}
+
+############################################################
+# EXTRACT KUBECONFIG
+############################################################
+resource "local_file" "buffer" {
+    content     = jsonencode(intersight_kubernetes_cluster_profile.output)
+    filename = "${path.module}/buffer.json"
+}
+
+resource "null_resource" "extract_step1" {
+  provisioner "local-exec" {
+
+    command = "cat ${path.module}/buffer.json"
+  }
+}
+
+############################################################
+# DEFINE OUTPUT
+############################################################
+output "cluster_info" {
+  value = data.intersight_kubernetes_cluster_profile.output
+}
