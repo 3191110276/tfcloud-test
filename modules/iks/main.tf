@@ -296,6 +296,7 @@ resource "local_file" "buffer" {
 }
 
 resource "null_resource" "extract_step1" {
+  depends_on = [local_file.buffer]
   provisioner "local-exec" {
 
     command = "cat ${path.module}/buffer.json"
