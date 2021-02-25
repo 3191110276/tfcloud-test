@@ -290,7 +290,7 @@ data "intersight_kubernetes_cluster_profile" "output" {
 # EXTRACT KUBECONFIG
 ############################################################
 resource "local_file" "buffer" {
-    content     = jsonencode(intersight_kubernetes_cluster_profile.output)
+    content     = jsonencode(data.intersight_kubernetes_cluster_profile.output)
     filename = "${path.module}/buffer.json"
 }
 
