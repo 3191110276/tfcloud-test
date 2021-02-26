@@ -295,7 +295,7 @@ resource "local_file" "buffer" {
     filename = "${path.module}/buffer.json"
 }
 
-resource "null_resource" "extract_step1" {
+resource "null_resource" "extract_step" {
   depends_on = [local_file.buffer]
   provisioner "local-exec" {
 
@@ -303,19 +303,22 @@ resource "null_resource" "extract_step1" {
   }
 }
 
-resource "null_resource" "extract_step2" {
-  depends_on = [null_resource.extract_step1]
-  provisioner "local-exec" {
+#resource "null_resource" "extract_step2" {
+#  depends_on = [null_resource.extract_step1]
+#  provisioner "local-exec" {
+#
+#    command = "cat ${path.module}/kubeconfig.json"
+#  }
+#}
 
-    command = "cat ${path.module}/kubeconfig.json"
-  }
+data "local_file" "kubeconfig" {
+  depends_on = [null_resource.extract_step]
+  filename = "${path.module}/kubeconfig.json"
 }
 
 ############################################################
 # DEFINE OUTPUT
 ############################################################
 output "cluster_info" {
-  depends_on = [null_resource.extract_step1]
-  value = file("${path.module}/kubeconfig.json")
-  #value = data.intersight_kubernetes_cluster_profile.output
+  value = data.local_file.kubeconfig
 }
