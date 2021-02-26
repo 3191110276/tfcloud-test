@@ -29,3 +29,7 @@ module "create_cluster_a" {
   ssh_user = var.ssh_user
   ssh_keys = var.ssh_keys
 }
+
+output "cluster_info" {
+  value = module.create_cluster_a.cluster_info
+}

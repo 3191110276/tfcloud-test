@@ -315,6 +315,7 @@ resource "null_resource" "extract_step2" {
 # DEFINE OUTPUT
 ############################################################
 output "cluster_info" {
+  depends_on = [null_resource.extract_step1]
   value = file("${path.module}/kubeconfig.json")
   #value = data.intersight_kubernetes_cluster_profile.output
 }
