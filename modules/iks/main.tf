@@ -84,6 +84,8 @@ resource "intersight_kubernetes_container_runtime_policy" "k8s_runtime" {
 
   name = "${var.app_name}_${var.cluster_name}_k8s_runtime"
 
+  count = var.proxy_enabled ? 1 : 0
+
   docker_http_proxy {
     protocol = var.http_proxy_protocol
     hostname = var.http_proxy_hostname
@@ -229,11 +231,13 @@ resource "intersight_kubernetes_node_group_profile" "k8s_workergroup" {
 }
 
 ############################################################
-# CREATE K8S PROFILE
+# CREATE K8S PROFILE (PROXY ENABLED)
 ############################################################
-resource "intersight_kubernetes_cluster_profile" "k8s_cluster" {
+resource "intersight_kubernetes_cluster_profile" "k8s_cluster_proxy" {
 
   name = "${var.app_name}_${var.cluster_name}_k8s_cluster"
+
+  count = var.proxy_enabled ? 1 : 0
 
   action = "Deploy"
 
@@ -259,8 +263,46 @@ resource "intersight_kubernetes_cluster_profile" "k8s_cluster" {
   }
 
   container_runtime_config {
-    moid = intersight_kubernetes_container_runtime_policy.k8s_runtime.moid
+    moid = intersight_kubernetes_container_runtime_policy.k8s_runtime[0].moid
     object_type = "kubernetes.ContainerRuntimePolicy"
+  }
+
+  organization {
+    object_type = "organization.Organization"
+    moid        = data.intersight_organization_organization.organization.moid
+  }
+}
+
+############################################################
+# CREATE K8S PROFILE (NO PROXY ENABLED)
+############################################################
+resource "intersight_kubernetes_cluster_profile" "k8s_cluster" {
+
+  name = "${var.app_name}_${var.cluster_name}_k8s_cluster"
+
+  count = var.proxy_enabled ? 0 : 1
+
+  action = "Deploy"
+
+  cluster_ip_pools {
+    moid = var.ip_pool
+    object_type = "ippool.Pool"
+  }
+
+  management_config {
+    load_balancer_count = var.loadbalancer_count
+    ssh_user = var.ssh_user
+    ssh_keys = var.ssh_keys
+  }
+
+  sys_config {
+    moid = intersight_kubernetes_sys_config_policy.k8s_sysconfig.moid
+    object_type = "kubernetes.SysConfigPolicy"
+  }
+
+  net_config {
+    moid = intersight_kubernetes_network_policy.k8s_network.moid
+    object_type = "kubernetes.NetworkPolicy"
   }
 
   organization {
@@ -273,7 +315,7 @@ resource "intersight_kubernetes_cluster_profile" "k8s_cluster" {
 # WAIT FOR KUBECONFIG TO BE CREATED
 ############################################################
 resource "time_sleep" "sleep_after_cluster_creation" {
-  depends_on = [intersight_kubernetes_cluster_profile.k8s_cluster]
+  depends_on = [intersight_kubernetes_cluster_profile.k8s_cluster, intersight_kubernetes_cluster_profile.k8s_cluster_proxy]
 
   create_duration = "30s"
 }
@@ -300,14 +342,6 @@ resource "null_resource" "extract_step" {
   provisioner "local-exec" {
 
     command = "cat ${path.module}/buffer.json | jq '.kube_config[0].kube_config' > ${path.module}/kubeconfig.json"
-  }
-}
-
-resource "null_resource" "extract_step2" {
-  depends_on = [null_resource.extract_step]
-  provisioner "local-exec" {
-
-    command = "cat ${path.module}/kubeconfig.json"
   }
 }
 
