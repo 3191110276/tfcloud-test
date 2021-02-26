@@ -299,7 +299,7 @@ resource "null_resource" "extract_step" {
   depends_on = [local_file.buffer]
   provisioner "local-exec" {
 
-    command = "${path.module}/buffer.json | jq '.kube_config[0].kube_config' > ${path.module}/kubeconfig.json"
+    command = "cat ${path.module}/buffer.json | jq '.kube_config[0].kube_config' > ${path.module}/kubeconfig.json"
   }
 }
 
