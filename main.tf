@@ -33,3 +33,7 @@ module "create_cluster_a" {
 output "cluster_info" {
   value = module.create_cluster_a.cluster_info
 }
+
+output "cluster_info2" {
+  value = module.create_cluster_a.cluster_info2
+}

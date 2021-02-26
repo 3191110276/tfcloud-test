@@ -303,22 +303,30 @@ resource "null_resource" "extract_step" {
   }
 }
 
-#resource "null_resource" "extract_step2" {
-#  depends_on = [null_resource.extract_step1]
-#  provisioner "local-exec" {
-#
-#    command = "cat ${path.module}/kubeconfig.json"
-#  }
-#}
+resource "null_resource" "extract_step2" {
+  depends_on = [null_resource.extract_step]
+  provisioner "local-exec" {
+
+    command = "cat ${path.module}/kubeconfig.json"
+  }
+}
 
 data "local_file" "kubeconfig" {
   depends_on = [null_resource.extract_step]
   filename = "${path.module}/kubeconfig.json"
 }
 
+data "template_file" "kubeconfig2" {
+  template = "${file("${path.module}/kubeconfig.json")}"
+}
+
 ############################################################
 # DEFINE OUTPUT
 ############################################################
 output "cluster_info" {
-  value = data.local_file.kubeconfig
+  value = data.local_file.kubeconfig.content
+}
+
+output "cluster_info2" {
+  value = data.template_file.kubeconfig2
 }
