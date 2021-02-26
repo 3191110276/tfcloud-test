@@ -317,6 +317,7 @@ data "local_file" "kubeconfig" {
 }
 
 data "template_file" "kubeconfig2" {
+  depends_on = [null_resource.extract_step]
   template = "${file("${path.module}/kubeconfig.json")}"
 }
 
